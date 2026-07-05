@@ -45,10 +45,11 @@ Provides real-time, fluid UI controls to:
 PSniffer/
 │
 ├── app.py                # Main backend (Flask Server, SocketIO, Scapy Engine)
+├── index.html            # Frontend dashboard interface console
 ├── requirements.txt      # Project library dependencies
 ├── README.md             # Project documentation & setup guide
-└── templates/
-    └── index.html        # Frontend dashboard (Tailwind CSS, Socket.IO client)
+└── docs/
+    └── walkthrough.md    # Step-by-step setup & verification guide
 ```
 
 ---

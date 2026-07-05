@@ -9,7 +9,7 @@ from flask_socketio import SocketIO, emit
 from scapy.all import sniff, IP, TCP, UDP, ICMP, Raw, wrpcap
 
 # Set up Flask & SocketIO
-app = Flask(__name__)
+app = Flask(__name__, template_folder='.')
 app.config['SECRET_KEY'] = 'cyberguard_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
