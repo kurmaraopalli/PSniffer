@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberGuard | Real-Time Web-Based Packet Sniffer & IDS</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        /* Modern CSS Design System & Variables */
+        :root {
+            --bg-color: #f8fafc;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --panel-border: rgba(15, 23, 42, 0.08);
+            --panel-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.08);
+            
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-light: #e0e7ff;
+            --cyan: #0891b2;
+            --cyan-light: #ecfeff;
+            --cyan-border: #cffafe;
+            
+            --success: #10b981;
+            --success-light: #ecfdf5;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --danger: #ef4444;
+            --danger-light: #fef2f2;
+            
+            --tcp-bg: #ecfeff;
+            --tcp-color: #0891b2;
+            --tcp-border: #cffafe;
+            
+            --udp-bg: #e0e7ff;
+            --udp-color: #4f46e5;
+            --udp-border: #cffafe;
+            
+            --icmp-bg: #fff7ed;
+            --icmp-color: #ea580c;
+            --icmp-border: #ffedd5;
+            
+            --ip-bg: #f1f5f9;
+            --ip-color: #475569;
+            --ip-border: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Glassmorphic Panel Base Styles */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 1rem;
+            box-shadow: var(--panel-shadow);
+        }
+
+        /* Header Layout */
+        header.glass-panel {
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-icon {
+            height: 2.5rem;
+            width: 2.5rem;
+            border-radius: 0.75rem;
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--primary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.2);
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: 0.025em;
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* Button UI Design */
+        button, .btn {
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
+
+        .btn-primary {
+            padding: 0.5rem 1.25rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+
+        .btn-primary.active-sniffing {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        .pulse-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            background-color: white;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .pulse-active {
+            animation: pulse-animation 1.5s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        .btn-secondary {
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .btn-action {
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .btn-action:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        /* Workspace Grid */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 8fr 4fr;
+            gap: 1.5rem;
+            flex-grow: 1;
+        }
+
+        @media (max-width: 1024px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .left-column, .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Toolbar styles */
+        .toolbar {
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .protocol-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-right: 0.25rem;
+        }
+
+        .filter-proto-btn {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .filter-proto-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .filter-proto-btn.active-filter {
+            background: var(--cyan-light);
+            color: var(--cyan);
+            border-color: var(--cyan-border);
+        }
+
+        .search-filters {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .search-input {
+            padding: 0.4rem 0.75rem;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            border: 1px solid #e2e8f0;
+            outline: none;
+            width: 12rem;
+            font-family: inherit;
+        }
+
+        .search-input:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.1);
+        }
+
+        /* Toggle switches */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .switch-input {
+            display: none;
+        }
+
+        .switch-track {
+            width: 2rem;
+            height: 1rem;
+            background-color: #cbd5e1;
+            border-radius: 9999px;
+            position: relative;
+        }
+
+        .switch-thumb {
+            width: 0.8rem;
+            height: 0.8rem;
+            background-color: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 0.1rem;
+            left: 0.1rem;
+            transition: left 0.2s;
+        }
+
+        .switch-input:checked + .switch-track {
+            background-color: var(--danger);
+        }
+
+        .switch-input:checked + .switch-track .switch-thumb {
+            left: 1.1rem;
+        }
+
+        .switch-input:checked ~ span {
+            color: var(--danger);
+        }
+
+        /* Packet Table Panel */
+        .table-panel {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 400px;
+        }
+
+        .table-header-container {
+            overflow-x: auto;
+            background: #f8fafc;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .packet-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            table-layout: fixed;
+            min-w: 700px;
+        }
+
+        .packet-table th {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            padding: 0.75rem 0.5rem;
+        }
+
+        .packet-table th:first-child, .packet-table td:first-child {
+            padding-left: 1.25rem;
+        }
+
+        .packet-table th:last-child, .packet-table td:last-child {
+            padding-right: 1.25rem;
+        }
+
+        .table-body-container {
+            overflow-y: auto;
+            flex-grow: 1;
+            height: 0;
+        }
+
+        .packet-table tbody tr {
+            border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+            cursor: pointer;
+        }
+
+        .packet-table tbody tr:hover {
+            background-color: rgba(79, 70, 229, 0.02);
+        }
+
+        .packet-table tbody tr.selected-row {
+            background-color: var(--cyan-light) !important;
+            border-left: 3px solid var(--cyan);
+        }
+
+        .packet-table tbody tr.alert-row {
+            background-color: rgba(239, 68, 68, 0.02);
+            border-left: 3px solid var(--danger);
+        }
+
+        .packet-table tbody tr.alert-row:hover {
+            background-color: rgba(239, 68, 68, 0.04);
+        }
+
+        .packet-table td {
+            font-size: 0.75rem;
+            padding: 0.75rem 0.5rem;
+            vertical-align: middle;
+            color: #334155;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .geo-cell {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .geo-org {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        /* Badges */
+        .badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            display: inline-block;
+        }
+
+        .badge-tcp { background: var(--tcp-bg); color: var(--tcp-color); border: 1px solid var(--tcp-border); }
+        .badge-udp { background: var(--udp-bg); color: var(--udp-color); border: 1px solid var(--udp-border); }
+        .badge-icmp { background: var(--icmp-bg); color: var(--icmp-color); border: 1px solid var(--icmp-border); }
+        .badge-ip { background: var(--ip-bg); color: var(--ip-color); border: 1px solid var(--ip-border); }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-light);
+            padding: 3rem;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Metric Widgets */
+        .metrics-card {
+            padding: 1rem;
+        }
+
+        .metrics-card h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .metric-item {
+            border-radius: 0.75rem;
+            padding: 0.75rem 0.5rem;
+            text-align: center;
+            border: 1px solid rgba(15, 23, 42, 0.04);
+        }
+
+        .metric-item-tcp { background-color: var(--tcp-bg); border-color: var(--tcp-border); color: var(--tcp-color); }
+        .metric-item-udp { background-color: var(--udp-bg); border-color: var(--udp-border); color: var(--udp-color); }
+        .metric-item-icmp { background-color: var(--icmp-bg); border-color: var(--icmp-border); color: var(--icmp-color); }
+
+        .metric-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.125rem;
+            font-weight: 700;
+        }
+
+        .metrics-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-top: 1px solid rgba(15, 23, 42, 0.06);
+            padding-top: 0.75rem;
+        }
+
+        /* Alert Feed Panel */
+        .alerts-panel {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            min-height: 250px;
+        }
+
+        .alerts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .alerts-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--danger);
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .live-dot {
+            width: 0.4rem;
+            height: 0.4rem;
+            background-color: var(--danger);
+            border-radius: 50%;
+            animation: pulse-alert 1.2s infinite;
+        }
+
+        @keyframes pulse-alert {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+
+        .alerts-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.1rem 0.5rem;
+            border-radius: 9999px;
+            background-color: var(--danger-light);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        .alerts-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.625rem;
+        }
+
+        .alert-card {
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            border: 1px solid;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .alert-card-medium {
+            background-color: var(--warning-light);
+            border-color: rgba(245, 158, 11, 0.2);
+            color: #854d0e;
+        }
+
+        .alert-card-high {
+            background-color: #ffedd5;
+            border-color: rgba(234, 88, 12, 0.25);
+            color: #9a3412;
+        }
+
+        .alert-card-critical {
+            background-color: var(--danger-light);
+            border-color: rgba(239, 68, 68, 0.2);
+            color: #991b1b;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.05);
+        }
+
+        .alert-card-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+        }
+
+        .alert-card-msg {
+            font-weight: 500;
+            color: #1e293b;
+        }
+
+        .alert-card-footer {
+            margin-top: 0.25rem;
+            padding-top: 0.4rem;
+            border-top: 1px solid rgba(15, 23, 42, 0.04);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        /* Inspector Panel */
+        .inspector-panel {
+            margin-top: 1.5rem;
+            padding: 1rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .inspector-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .inspector-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--cyan);
+        }
+
+        .inspector-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+        }
+
+        .btn-close {
+            font-size: 1.25rem;
+            color: var(--text-light);
+            background: none;
+            padding: 0 0.25rem;
+        }
+
+        .btn-close:hover {
+            color: var(--text-muted);
+        }
+
+        .inspector-grid {
+            display: grid;
+            grid-template-columns: 5fr 7fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .inspector-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .layers-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .layer-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+        }
+
+        .layer-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+            padding-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .field-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            padding: 0.15rem 0;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.02);
+        }
+
+        .field-key {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .field-val {
+            color: #334155;
+            font-weight: 600;
+            max-width: 12rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .hex-container-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.375rem;
+            display: block;
+        }
+
+        .hex-dump {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            font-size: 0.7rem;
+            color: var(--cyan);
+            overflow-x: auto;
+            max-height: 220px;
+            overflow-y: auto;
+            white-space: pre;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Footer Copyright */
+        footer {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.65rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="glass-panel">
+        <div class="brand-container">
+            <div class="brand-icon">
+                <span>🛡️</span>
+            </div>
+            <div class="brand-text">
+                <h1>CyberGuard</h1>
+                <p>Real-Time Packet Sniffer & IDS Console</p>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <!-- Capture Controls -->
+            <button id="toggleBtn" class="btn btn-primary">
+                <span id="pulseIndicator" class="pulse-dot"></span>
+                <span id="btnText">Start Sniffing</span>
+            </button>
+
+            <button id="clearBtn" class="btn btn-secondary">
+                Clear Console
+            </button>
+
+            <a href="/api/export" id="exportBtn" class="btn btn-action">
+                <span>📥</span> Export PCAP
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <main class="workspace-grid">
+        
+        <!-- Left Side: Real-Time Flow & Filters (8 columns) -->
+        <div class="left-column">
+            
+            <!-- Filters & Stats Toolbar -->
+            <div class="glass-panel toolbar">
+                <div class="protocol-selector">
+                    <span class="section-label">Protocol:</span>
+                    <button class="filter-proto-btn active-filter" data-proto="ALL">All</button>
+                    <button class="filter-proto-btn" data-proto="TCP">TCP</button>
+                    <button class="filter-proto-btn" data-proto="UDP">UDP</button>
+                    <button class="filter-proto-btn" data-proto="ICMP">ICMP</button>
+                </div>
+
+                <div class="search-filters">
+                    <input type="text" id="ipFilter" placeholder="Filter by IP..." class="search-input">
+                    
+                    <label class="switch-container">
+                        <input type="checkbox" id="alertsOnly" class="switch-input">
+                        <div class="switch-track">
+                            <div class="switch-thumb"></div>
+                        </div>
+                        <span>Alerts Only</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Streaming Packet Datagrid -->
+            <div class="glass-panel table-panel">
+                <div class="table-header-container">
+                    <table class="packet-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%;">Time</th>
+                                <th style="width: 10%;">Proto</th>
+                                <th style="width: 25%;">Source IP</th>
+                                <th style="width: 25%;">Destination IP</th>
+                                <th style="width: 10%; text-align: right;">Length</th>
+                                <th style="width: 20%;">Info</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div class="table-body-container" id="tableBodyContainer">
+                    <table class="packet-table">
+                        <tbody id="packetList" class="code-font">
+                            <!-- Populated Dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="emptyState" class="empty-state">
+                        <span class="empty-state-icon">📡</span>
+                        <p>Capture is currently inactive. Click 'Start Sniffing' to begin.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Side: IDS Alerts Panel & Packet Inspector (4 columns) -->
+        <div class="right-column">
+
+            <!-- Real-time Metrics Dashboard -->
+            <div class="glass-panel metrics-card">
+                <h3>Protocol Distribution</h3>
+                <div class="metrics-grid">
+                    <div class="metric-item metric-item-tcp">
+                        <span class="metric-label">TCP</span>
+                        <span class="metric-value code-font" id="statTCP">0</span>
+                    </div>
+                    <div class="metric-item metric-item-udp">
+                        <span class="metric-label">UDP</span>
+                        <span class="metric-value code-font" id="statUDP">0</span>
+                    </div>
+                    <div class="metric-item metric-item-icmp">
+                        <span class="metric-label">ICMP</span>
+                        <span class="metric-value code-font" id="statICMP">0</span>
+                    </div>
+                </div>
+                <div class="metrics-footer">
+                    <span>Total Packet Count:</span>
+                    <span id="statTotal" class="code-font" style="font-weight: 700;">0</span>
+                </div>
+            </div>
+
+            <!-- Intrusion Detection System Alert Feed -->
+            <div class="glass-panel alerts-panel">
+                <div class="alerts-header">
+                    <h3 class="alerts-title">
+                        <span class="live-dot"></span>
+                        IDS Live Threat Feed
+                    </h3>
+                    <span class="alerts-badge" id="alertCountBadge">0 alerts</span>
+                </div>
+                <div class="alerts-list" id="alertList">
+                    <!-- Populated Dynamically -->
+                    <div class="empty-state" id="emptyAlerts" style="padding: 2rem 1rem;">
+                        <span>🟢</span>
+                        <p style="font-size: 0.75rem; margin-top: 0.25rem;">No intrusion attempts detected.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Deep-Dive Packet & Hex Inspector (Full-width bottom panel) -->
+    <section class="glass-panel inspector-panel hidden" id="inspectorPanel">
+        <div class="inspector-header">
+            <div>
+                <span class="inspector-title">Packet Deep-Dive Inspector</span>
+                <span id="inspectPacketMeta" class="inspector-meta code-font"></span>
+            </div>
+            <button class="btn-close" onclick="closeInspector()">&times;</button>
+        </div>
+
+        <div class="inspector-grid">
+            <!-- Layers Breakdown Structure -->
+            <div class="layers-container" id="inspectLayers">
+                <!-- Layers parsed dynamically -->
+            </div>
+
+            <!-- Raw Hex & ASCII Frame Dump -->
+            <div>
+                <span class="hex-container-label">Payload Hex/ASCII Dump:</span>
+                <pre class="hex-dump code-font" id="inspectHexDump">
+<!-- Hex Dump dynamically populated -->
+                </pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer Copyright -->
+    <footer>
+        CyberGuard Packet Sniffer Framework &copy; 2026. Educational Portfolio Prototype.
+    </footer>
+
+    <!-- Frontend Socket IO and UI Logic -->
+    <script>
+        const socket = io();
+
+        // UI Element Selectors
+        const toggleBtn = document.getElementById('toggleBtn');
+        const pulseIndicator = document.getElementById('pulseIndicator');
+        const btnText = document.getElementById('btnText');
+        const clearBtn = document.getElementById('clearBtn');
+        const packetList = document.getElementById('packetList');
+        const alertList = document.getElementById('alertList');
+        const emptyState = document.getElementById('emptyState');
+        const emptyAlerts = document.getElementById('emptyAlerts');
+        
+        // Counter Selectors
+        const statTCP = document.getElementById('statTCP');
+        const statUDP = document.getElementById('statUDP');
+        const statICMP = document.getElementById('statICMP');
+        const statTotal = document.getElementById('statTotal');
+        const alertCountBadge = document.getElementById('alertCountBadge');
+        
+        // Filter Selectors
+        const ipFilter = document.getElementById('ipFilter');
+        const alertsOnly = document.getElementById('alertsOnly');
+        const protoBtns = document.querySelectorAll('.filter-proto-btn');
+
+        // State Tracking variables
+        let sniffingState = false;
+        let packetsMap = new Map();
+        let selectedPacketId = null;
+        let activeProtocolFilter = 'ALL';
+        let stats = { TCP: 0, UDP: 0, ICMP: 0, Total: 0 };
+        let alertCount = 0;
+
+        // Fetch initial backend state
+        fetch('/api/status')
+            .then(res => res.json())
+            .then(data => {
+                updateSniffingStatus(data.is_sniffing);
+            });
+
+        // Socket listeners
+        socket.on('status_change', function(data) {
+            updateSniffingStatus(data.is_sniffing);
+        });
+
+        socket.on('new_packet', function(packet) {
+            // Buffer packet locally for filters and inspect lookup
+            packetsMap.set(packet.id, packet);
+            
+            // Limit stored memory map
+            if (packetsMap.size > 150) {
+                const oldestKey = packetsMap.keys().next().value;
+                packetsMap.delete(oldestKey);
+            }
+
+            // Update local statistics
+            stats.Total++;
+            if (packet.protocol in stats) {
+                stats[packet.protocol]++;
+            }
+            updateStatsUI();
+
+            // Inject triggered alerts to IDS feeds
+            if (packet.alerts && packet.alerts.length > 0) {
+                injectAlerts(packet);
+            }
+
+            // Create row
+            appendPacketRow(packet);
+        });
+
+        socket.on('buffer_cleared', function() {
+            packetsMap.clear();
+            packetList.innerHTML = '';
+            alertList.innerHTML = '<div class="empty-state" id="emptyAlerts" style="padding: 2rem 1rem;"><span>🟢</span><p style="font-size: 0.75rem; margin-top: 0.25rem;">No intrusion attempts detected.</p></div>';
+            alertCount = 0;
+            alertCountBadge.innerText = '0 alerts';
+            stats = { TCP: 0, UDP: 0, ICMP: 0, Total: 0 };
+            updateStatsUI();
+            closeInspector();
+            checkEmptyState();
+        });
+
+        // Trigger capture toggling
+        toggleBtn.addEventListener('click', function() {
+            socket.emit('toggle_capture', { state: !sniffingState });
+        });
+
+        // Clear local datagrid & backend buffer
+        clearBtn.addEventListener('click', function() {
+            socket.emit('clear_buffer');
+        });
+
+        // Update sniffing dashboard status indicators
+        function updateSniffingStatus(isSniffing) {
+            sniffingState = isSniffing;
+            if (isSniffing) {
+                // Sniffing Active
+                toggleBtn.classList.add('btn-primary-sniffing');
+                toggleBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                toggleBtn.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.15)';
+                pulseIndicator.classList.add('pulse-active');
+                btnText.innerText = 'Stop Capture';
+            } else {
+                // Sniffing Inactive
+                toggleBtn.classList.remove('btn-primary-sniffing');
+                toggleBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                toggleBtn.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.15)';
+                pulseIndicator.classList.remove('pulse-active');
+                btnText.innerText = 'Start Sniffing';
+            }
+        }
+
+        // Stats update
+        function updateStatsUI() {
+            statTCP.innerText = stats.TCP;
+            statUDP.innerText = stats.UDP;
+            statICMP.innerText = stats.ICMP;
+            statTotal.innerText = stats.Total;
+        }
+
+        // Apply filters directly on table rows to avoid complete re-renders
+        function filterPacketRow(rowElement, packet) {
+            const ipQuery = ipFilter.value.trim().toLowerCase();
+            const showOnlyAlerts = alertsOnly.checked;
+            
+            let protoMatch = (activeProtocolFilter === 'ALL' || packet.protocol === activeProtocolFilter);
+            let ipMatch = true;
+            let alertMatch = true;
+
+            if (ipQuery) {
+                ipMatch = (packet.src_ip.toLowerCase().includes(ipQuery) || packet.dst_ip.toLowerCase().includes(ipQuery));
+            }
+
+            if (showOnlyAlerts) {
+                alertMatch = (packet.alerts && packet.alerts.length > 0);
+            }
+
+            if (protoMatch && ipMatch && alertMatch) {
+                rowElement.classList.remove('hidden');
+            } else {
+                rowElement.classList.add('hidden');
+            }
+        }
+
+        // Protocol Filter buttons binding
+        protoBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                protoBtns.forEach(b => {
+                    b.classList.remove('active-filter');
+                });
+                
+                this.classList.add('active-filter');
+                activeProtocolFilter = this.getAttribute('data-proto');
+                
+                // Re-evaluate visibility of all rows
+                document.querySelectorAll('.packet-row').forEach(row => {
+                    const pktId = parseInt(row.getAttribute('data-pkt-id'));
+                    const pkt = packetsMap.get(pktId);
+                    if (pkt) filterPacketRow(row, pkt);
+                });
+            });
+        });
+
+        // Search Filter typing and checkbox changes
+        ipFilter.addEventListener('input', applyFilters);
+        alertsOnly.addEventListener('change', applyFilters);
+
+        function applyFilters() {
+            document.querySelectorAll('.packet-row').forEach(row => {
+                const pktId = parseInt(row.getAttribute('data-pkt-id'));
+                const pkt = packetsMap.get(pktId);
+                if (pkt) filterPacketRow(row, pkt);
+            });
+        }
+
+        // Inject packet records into UI datagrid
+        function appendPacketRow(packet) {
+            emptyState.classList.add('hidden');
+            
+            // Check if alert indicator is needed
+            const hasAlerts = packet.alerts && packet.alerts.length > 0;
+            const alertClass = hasAlerts ? 'alert-row' : '';
+
+            // Protocol badges design
+            let protoBadge = '';
+            if (packet.protocol === 'TCP') {
+                protoBadge = `<span class="badge badge-tcp">TCP</span>`;
+            } else if (packet.protocol === 'UDP') {
+                protoBadge = `<span class="badge badge-udp">UDP</span>`;
+            } else if (packet.protocol === 'ICMP') {
+                protoBadge = `<span class="badge badge-icmp">ICMP</span>`;
+            } else {
+                protoBadge = `<span class="badge badge-ip">IP</span>`;
+            }
+
+            const row = document.createElement('tr');
+            row.setAttribute('data-pkt-id', packet.id);
+            row.className = `packet-row ${alertClass}`;
+            
+            row.innerHTML = `
+                <td style="width: 10%; color: var(--text-muted);">${packet.timestamp}</td>
+                <td style="width: 10%;">${protoBadge}</td>
+                <td style="width: 25%; font-weight: 600;">
+                    <span style="margin-right: 0.35rem;" title="${packet.src_geo.country}">${packet.src_geo.flag}</span>${packet.src_ip}
+                    <span class="geo-org">${packet.src_geo.org}</span>
+                </td>
+                <td style="width: 25%; font-weight: 600;">
+                    <span style="margin-right: 0.35rem;" title="${packet.dst_geo.country}">${packet.dst_geo.flag}</span>${packet.dst_ip}
+                    <span class="geo-org">${packet.dst_geo.org}</span>
+                </td>
+                <td style="width: 10%; text-align: right; font-weight: 700; color: #475569;">${packet.length.toLocaleString()}</td>
+                <td style="width: 20%; color: var(--text-muted);">${packet.info}</td>
+            `;
+
+            // Bind click handler for Inspector
+            row.addEventListener('click', () => {
+                selectPacket(packet.id);
+            });
+
+            // Apply filters immediately before attaching
+            filterPacketRow(row, packet);
+
+            // Prepend new row for instant viewing of incoming stream
+            if (packetList.firstChild) {
+                packetList.insertBefore(row, packetList.firstChild);
+            } else {
+                packetList.appendChild(row);
+            }
+
+            // Cap items to keep DOM performant (limit 100 rows visible)
+            if (packetList.children.length > 100) {
+                packetList.removeChild(packetList.lastChild);
+            }
+        }
+
+        // Select and display packet in the Deep Inspector
+        function selectPacket(id) {
+            // Deselect old
+            if (selectedPacketId) {
+                const oldRow = document.querySelector(`.packet-row[data-pkt-id="${selectedPacketId}"]`);
+                if (oldRow) oldRow.classList.remove('selected-row');
+            }
+
+            selectedPacketId = id;
+            const row = document.querySelector(`.packet-row[data-pkt-id="${id}"]`);
+            if (row) {
+                row.classList.add('selected-row');
+            }
+
+            const pkt = packetsMap.get(id);
+            if (!pkt) return;
+
+            // Open panel
+            const panel = document.getElementById('inspectorPanel');
+            panel.classList.remove('hidden');
+
+            // Set Header metadata
+            document.getElementById('inspectPacketMeta').innerText = `[ID: ${pkt.id} | Size: ${pkt.length} B | Proto: ${pkt.protocol}]`;
+
+            // Populate layers description
+            const layersContainer = document.getElementById('inspectLayers');
+            layersContainer.innerHTML = '';
+            
+            pkt.layers.forEach((l, index) => {
+                const layerCard = document.createElement('div');
+                layerCard.className = 'layer-card';
+                
+                let fieldsMarkup = '';
+                for (const [key, value] of Object.entries(l.fields)) {
+                    fieldsMarkup += `
+                        <div class="field-row">
+                            <span class="field-key">${key}</span>
+                            <span class="field-val" title="${value}">${value}</span>
+                        </div>
+                    `;
+                }
+
+                layerCard.innerHTML = `
+                    <div class="layer-title">Layer ${index + 1}: ${l.layer}</div>
+                    <div style="display: flex; flex-direction: column;">
+                        ${fieldsMarkup || '<span style="color: var(--text-light); font-size: 0.7rem; font-style: italic;">No editable fields</span>'}
+                    </div>
+                `;
+                layersContainer.appendChild(layerCard);
+            });
+
+            // Populate Hex Dump
+            const hexContainer = document.getElementById('inspectHexDump');
+            hexContainer.innerText = pkt.hex_dump || '<< Empty Packet Frame Payload >>';
+        }
+
+        // Close Inspector
+        function closeInspector() {
+            if (selectedPacketId) {
+                const row = document.querySelector(`.packet-row[data-pkt-id="${selectedPacketId}"]`);
+                if (row) row.classList.remove('selected-row');
+            }
+            selectedPacketId = null;
+            document.getElementById('inspectorPanel').classList.add('hidden');
+        }
+
+        // Inject generated security warnings into the IDS feed panel
+        function injectAlerts(packet) {
+            const feedContainer = document.getElementById('alertList');
+            const placeholder = document.getElementById('emptyAlerts');
+            if (placeholder) placeholder.remove();
+
+            packet.alerts.forEach(alert => {
+                alertCount++;
+                alertCountBadge.innerText = `${alertCount} alert${alertCount > 1 ? 's' : ''}`;
+                
+                const card = document.createElement('div');
+                
+                let sevClass = 'alert-card-medium';
+                if (alert.severity === 'high') sevClass = 'alert-card-high';
+                if (alert.severity === 'critical') sevClass = 'alert-card-critical';
+
+                card.className = `alert-card ${sevClass}`;
+                card.innerHTML = `
+                    <div class="alert-card-header">
+                        <span>⚠️ ${alert.type}</span>
+                        <span>${packet.timestamp}</span>
+                    </div>
+                    <p class="alert-card-msg">${alert.message}</p>
+                    <div class="alert-card-footer">
+                        <span>Proto: ${packet.protocol}</span>
+                        <span>Src: ${packet.src_ip}</span>
+                    </div>
+                `;
+
+                // Add to top of list
+                if (feedContainer.firstChild) {
+                    feedContainer.insertBefore(card, feedContainer.firstChild);
+                } else {
+                    feedContainer.appendChild(card);
+                }
+                
+                // Keep alert display capped to prevent scrolling issues
+                if (feedContainer.children.length > 50) {
+                    feedContainer.removeChild(feedContainer.lastChild);
+                }
+            });
+        }
+
+        function checkEmptyState() {
+            if (packetList.children.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

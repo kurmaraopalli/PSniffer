@@ -11,30 +11,38 @@ A lightweight, high-performance network traffic analyzer and mini-Intrusion Dete
 
 ---
 
-## 🛠️ Advanced Production Additions (IDS & Threat Intel)
+## 🛠️ Implemented Security & Analysis Modules
 
-Beyond basic logging, this repository features advanced enterprise modules designed to mimic production Security Operations Center (SOC) environments:
+This repository features fully implemented network diagnostic and threat monitoring modules designed to simulate Security Operations Center (SOC) environments:
 
 ### 1. Intrusion Detection System (IDS) Engine
-Monitors the live traffic thread for signature patterns and volumetric thresholds to trigger real-time, color-coded visual alerts on the dashboard UI:
-* **Port Scan Analytics:** Warns operators via red alerts if an isolated Source IP scans across more than 10 separate target ports inside a rolling 5-second matrix.
-* **Exfiltration / Volumetric Detection:** Automatically flags payload bursts scaling over 1,500 bytes to isolate potential Data Exfiltration attempts.
-* **Plaintext Leak Warnings:** Inspects unencrypted protocols (HTTP/FTP/Telnet) for explicit patterns matching `password=`, `token=`, or `admin=` keys.
+Monitors the background Scapy packet stream for signature patterns and volumetric anomalies, piping real-time warnings to the dashboard:
+* **Port Scan Analytics:** Uses a sliding tracking cache (`time` & `collections.defaultdict`) inside `app.py`. If any isolated source IP connects to more than 10 unique destination ports within a rolling 5-second matrix, a critical alert is triggered.
+* **Exfiltration / Volumetric Detection:** Flags any packet whose payload size scales over 1,500 bytes to highlight data exfiltration anomalies.
+* **Plaintext Leak Warnings:** Audits unencrypted frame payloads (HTTP, FTP, Telnet) inside the Scapy `Raw` layer for sensitive query markers matching `password=`, `token=`, `admin=`, `passwd=`, or `secret=`.
 
 ### 2. GeoIP Threat Intelligence Enrichment
-Enriches raw IP strings with spatial telemetry. Integrates local IP databases to parse public source routing, automatically injecting country origin flags and organizational metadata beside every external node in the streaming datagrid.
+Analyzes source and destination IPs on every capture. Private ranges are mapped to local origin indicators, while external public IPs are enriched using a lightweight caching prefix resolver that dynamically pushes country metadata, flag emojis (e.g., 🇺🇸, 🇬🇧, 🇦🇺), and ISP/organization names to the UI.
 
 ### 3. Forensic PCAP Export Utility
-Enables deep-dive offline incident response. Uses Scapy’s native `wrpcap()` system to commit the current live stream into structured `.pcap` files, exposed via a one-click frontend action bar to allow instantaneous handoffs into Wireshark or Network Miner.
+Retains an active buffer of the last 100 captured frames in-memory. Clicking the **Export PCAP** console button invokes an asynchronous query to the `/api/export` Flask endpoint, which writes the network stream to a structured PCAP file using Scapy's native `wrpcap()` and sends it down to the client.
 
-### 4. Surgical Traffic Filtering Console
-Gives analysts granular control over noisy networks. Includes a dynamic filter toolbar to instantly isolate records by Protocol (TCP/UDP/ICMP), capture specific target IP subnets, or pinpoint high-severity alerts.
+### 4. Deep Packet Inspector & Hex Console
+Enables surgical session investigations. Selecting a packet row instantly populates:
+* **Layer Decoder:** Expandable header structures mapping Ethernet, IP, and transport layers.
+* **Raw Hex Dump:** A side-by-side hexadecimal and ASCII memory dump format of raw payloads.
+
+### 5. Surgical Traffic Filtering Console
+Provides real-time, fluid UI controls to:
+* Isolate traffic dynamically by Protocol (All, TCP, UDP, ICMP).
+* Search instantly for specific source or destination IP addresses.
+* Toggle the **Alerts Only** switch to hide safe traffic and focus exclusively on triggered IDS threat events.
 
 ---
 
 ## 📁 Project Directory Structure
 ```text
-cyberguard-sniffer/
+PSniffer/
 │
 ├── app.py                # Main backend (Flask Server, SocketIO, Scapy Engine)
 ├── requirements.txt      # Project library dependencies
@@ -49,10 +57,13 @@ cyberguard-sniffer/
 
 This application requires Python 3.8+ and elevated system administrative privileges to interface directly with network hardware interfaces.
 
+> [!NOTE]
+> **Windows Users:** You must install [Npcap](https://npcap.com/) (ensure "Install Npcap in WinPcap API-compatible mode" is checked) or WinPcap to enable packet capture capabilities.
+
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com
-cd cyberguard-sniffer
+git clone https://github.com/kurmaraopalli/PSniffer.git
+cd PSniffer
 ```
 
 ### 2. Install Project Dependencies
@@ -79,7 +90,7 @@ Because intercepting raw network card sockets is restricted, **you must execute 
 
 ### Step 2: Access the Security Console
 Open your preferred web browser and navigate to:
-`http://127.0.0`
+`http://127.0.0.1:5000`
 
 ### Step 3: Trigger Mock Telemetry Tests
 If your local host environment is quiet, execute the following commands in an isolated terminal to generate immediate, verifiable metrics on your frontend:
